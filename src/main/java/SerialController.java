@@ -1,6 +1,7 @@
 import com.fazecast.jSerialComm.*;
 
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 
@@ -8,7 +9,7 @@ public class SerialController {
 
     protected static SerialController serialController;
 
-    protected static SerialPort serialPort;
+    protected static SerialPort serialPort = null;
 
     public static SerialController getInstance(){
         if(serialController == null){
@@ -22,16 +23,22 @@ public class SerialController {
         serialPort.closePort();
     }
 
-    public SerialPort initPort() {
+
+    public SerialPort scanPortsAndGetArduino() {
         SerialPort[] serialPorts = SerialPort.getCommPorts();
 
-        for (SerialPort sp : serialPorts) {
-            System.out.println(sp.getSystemPortName());
-            System.out.println(sp.getDescriptivePortName());
+        Optional <SerialPort> serialPortOptional = Arrays.stream( serialPorts ).filter( sp -> sp.getDescriptivePortName().contains( "USB Serial Device" ) ).findFirst();
+
+        return serialPortOptional.isPresent() ? serialPortOptional.get() : null;
+    }
+
+
+    public SerialPort initPort() {
+
+        while(serialPort == null){
+            serialPort = scanPortsAndGetArduino();
         }
 
-
-        serialPort = SerialPort.getCommPort("COM5");
         serialPort.setComPortParameters(9600, 8, 1, 0); // default connection settings for Arduino
         serialPort.setComPortTimeouts(SerialPort.TIMEOUT_WRITE_BLOCKING, 0, 0); // block until bytes can be written
 

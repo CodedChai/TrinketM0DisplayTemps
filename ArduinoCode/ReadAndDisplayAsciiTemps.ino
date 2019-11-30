@@ -20,11 +20,7 @@ void setup() {
 
   initDisplay();
 
-  display.display();
-  display.clearDisplay();
-  delay(200);
-  display.clearDisplay();
-  drawText("Does it work?");
+  
 }
 
 void connectDisplay(void) {
@@ -43,12 +39,17 @@ void initDisplayText(void) {
 }
 
 void initDisplay(void) {
-
   connectDisplay();
-
   initDisplayText();
+  displayStartupText();
+}
 
-
+void displayStartupText(void){
+  display.display();
+  display.clearDisplay();
+  delay(200);
+  display.clearDisplay();
+  drawText("AWAITING  CONNECTION");
 }
 
 
@@ -86,11 +87,11 @@ String receiveData() {
 String outputTemperatureText(String temperatures){
   String displayText = "CPU: " + temperatures.substring(0, 2) + "\nGPU: " + temperatures.substring(2);
 
-
   return displayText;
 }
 
 void loop() {
+
   // if there's any serial available, read it:
   String displayMessage = receiveData();
 
@@ -100,9 +101,9 @@ void loop() {
     drawText(outputTemperatureText(displayMessage));
 
     digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
-    delay(500);                       // wait for a second
+    delay(200);                       
   }
-  digitalWrite(LED_BUILTIN, LOW);   // turn the LED on (HIGH is the voltage level)
+  digitalWrite(LED_BUILTIN, LOW);   // turn the LED off (LOW is the voltage level)
   delay(1);
 
 }
