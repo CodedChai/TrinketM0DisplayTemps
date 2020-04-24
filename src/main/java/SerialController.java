@@ -1,7 +1,8 @@
 import com.fazecast.jSerialComm.*;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Optional;
+import java.util.List;
 import java.util.stream.Collectors;
 
 
@@ -9,7 +10,7 @@ public class SerialController {
 
     protected static SerialController serialController;
 
-    protected static SerialPort serialPort = null;
+    protected static List<SerialPort> activePorts = new ArrayList <>();
 
     public static SerialController getInstance(){
         if(serialController == null){
@@ -25,18 +26,19 @@ public class SerialController {
 
 
     public void scanPortsAndGetArduino() {
-        SerialPort[] serialPorts = SerialPort.getCommPorts();
+        List <SerialPort> serialPorts = new ArrayList <>(Arrays.asList( SerialPort.getCommPorts() ));
 
-        Arrays.stream( serialPorts ).forEach( sp-> System.out.println(sp.getDescriptivePortName()) );
+        serialPorts.forEach( sp-> System.out.println(sp.getDescriptivePortName()) );
 
-        while ( serialPort == null ) {
-            for(SerialPort port: serialPorts){
-                if(initPort(port)){
-                    break;
-                }
+        for(SerialPort port: serialPorts){
+            initPort(port);
+
+            try {
+                Thread.sleep( 100 );
+            }catch ( Exception e ){
+                e.printStackTrace();
             }
         }
-
     }
 
     public void init() {
@@ -58,7 +60,7 @@ public class SerialController {
         }
     }
 
-    public boolean initPort(SerialPort port) {
+    public void initPort(SerialPort port) {
 
         port.setComPortParameters(9600, 8, 1, 0); // default connection settings for Arduino
         port.setComPortTimeouts(SerialPort.TIMEOUT_WRITE_BLOCKING, 0, 0); // block until bytes can be written
@@ -66,16 +68,17 @@ public class SerialController {
         if (port.openPort()) {
             System.out.println("Successfully opened port: " + port.getDescriptivePortName());
             if(isArduino( port )){
-                System.out.println( "Connecting to arduino on port: " + port.getDescriptivePortName()  );
-                serialPort = port;
-                return true;
+                System.out.println( "Connecting to arduino on port: " + port.getDescriptivePortName() );
+                activePorts.add( port );
+                System.out.println( port.getDescriptivePortName() + " added as an active port." );
+                System.out.println( "There are '" + activePorts.size() + "' currently active port(s)." );
+            } else {
+                closePort(port);
             }
-
-            closePort(port);
+        } else {
+            System.out.println("Failed to open port '"+ port.getDescriptivePortName() + "'. Ignoring.");
         }
 
-        System.out.println("Failed to open port. Exiting.");
-        return false;
     }
 
     protected void sendData(String dataToSend) {
@@ -90,14 +93,24 @@ public class SerialController {
 
             bytesToSend[dataToSendLength] = '\n';
 
+            activePorts.parallelStream().forEach( p -> sendAndFlushData(p, bytesToSend) );
 
-            serialPort.getOutputStream().write(bytesToSend);
-            serialPort.getOutputStream().flush();
             System.out.println("Sent data: " + dataToSend);
-
         } catch (Exception e) {
             e.printStackTrace();
             System.out.println("Failed to send data, will send next time.");
+        }
+    }
+
+    private static void sendAndFlushData(SerialPort port, byte[] bytesToSend){
+        try {
+            port.getOutputStream().write(bytesToSend);
+            port.getOutputStream().flush();
+        } catch ( Exception e ){
+            e.printStackTrace();
+
+            System.out.println( "Removing port '" + port.getDescriptivePortName() + "' from list of active ports" );
+            activePorts.remove( port );
         }
     }
 
