@@ -18,6 +18,7 @@ public class MainController {
 				execute();
 			} catch ( Exception e ){
 				e.printStackTrace();
+				break;
 			}
 		}
 	}
@@ -42,7 +43,7 @@ public class MainController {
 		serialController = SerialController.getInstance();
 		sensorOutput = SensorOutput.getInstance();
 
-		serialController.initPort();
+		serialController.init();
 		sensorOutput.updateSensors();
 	}
 

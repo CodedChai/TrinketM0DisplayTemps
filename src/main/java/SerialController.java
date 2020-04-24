@@ -19,37 +19,63 @@ public class SerialController {
         return serialController;
     }
 
-    public void closePort() {
-        serialPort.closePort();
+    public void closePort(SerialPort port) {
+        port.closePort();
     }
 
 
-    public SerialPort scanPortsAndGetArduino() {
+    public void scanPortsAndGetArduino() {
         SerialPort[] serialPorts = SerialPort.getCommPorts();
 
-        Optional <SerialPort> serialPortOptional = Arrays.stream( serialPorts ).filter( sp -> sp.getDescriptivePortName().contains( "USB Serial Device" ) ).findFirst();
+        Arrays.stream( serialPorts ).forEach( sp-> System.out.println(sp.getDescriptivePortName()) );
 
-        return serialPortOptional.isPresent() ? serialPortOptional.get() : null;
+        while ( serialPort == null ) {
+            for(SerialPort port: serialPorts){
+                if(initPort(port)){
+                    break;
+                }
+            }
+        }
+
     }
 
+    public void init() {
+        scanPortsAndGetArduino();
+    }
 
-    public SerialPort initPort() {
+    public boolean isArduino(SerialPort port){
+        try {
 
-        while(serialPort == null){
-            serialPort = scanPortsAndGetArduino();
+            String readValue = Character.toString((char) port.getInputStream().read() );
+
+            System.out.println( "Read: '" + readValue + "' from port");
+
+            return "~".equalsIgnoreCase( readValue );
+
+        } catch ( Exception e ){
+            System.out.println( port.getDescriptivePortName() + " was available but is not the Arduino." );
+            return false;
+        }
+    }
+
+    public boolean initPort(SerialPort port) {
+
+        port.setComPortParameters(9600, 8, 1, 0); // default connection settings for Arduino
+        port.setComPortTimeouts(SerialPort.TIMEOUT_WRITE_BLOCKING, 0, 0); // block until bytes can be written
+
+        if (port.openPort()) {
+            System.out.println("Successfully opened port: " + port.getDescriptivePortName());
+            if(isArduino( port )){
+                System.out.println( "Connecting to arduino on port: " + port.getDescriptivePortName()  );
+                serialPort = port;
+                return true;
+            }
+
+            closePort(port);
         }
 
-        serialPort.setComPortParameters(9600, 8, 1, 0); // default connection settings for Arduino
-        serialPort.setComPortTimeouts(SerialPort.TIMEOUT_WRITE_BLOCKING, 0, 0); // block until bytes can be written
-
-        if (serialPort.openPort()) {
-            System.out.println("Successfully opened port.");
-        } else {
-            System.out.println("Failed to open port. Exiting.");
-            return null;
-        }
-
-        return serialPort;
+        System.out.println("Failed to open port. Exiting.");
+        return false;
     }
 
     protected void sendData(String dataToSend) {
@@ -73,7 +99,6 @@ public class SerialController {
             e.printStackTrace();
             System.out.println("Failed to send data, will send next time.");
         }
-
     }
 
 

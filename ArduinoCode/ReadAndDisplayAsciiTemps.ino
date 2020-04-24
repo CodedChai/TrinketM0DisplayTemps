@@ -10,6 +10,8 @@
 #define OLED_RESET     4 // Reset pin # (or -1 if sharing Arduino reset pin)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
+boolean connected = false;
+
 void setup() {
   // initialize serial:
   Serial.begin(9600);
@@ -20,7 +22,7 @@ void setup() {
 
   initDisplay();
 
-  
+
 }
 
 void connectDisplay(void) {
@@ -44,7 +46,7 @@ void initDisplay(void) {
   displayStartupText();
 }
 
-void displayStartupText(void){
+void displayStartupText(void) {
   display.display();
   display.clearDisplay();
   delay(200);
@@ -68,8 +70,8 @@ String receiveData() {
   char receivedCharacters[32];
   int receivedCharacterIndex = 0;
 
- 
-  
+
+
   while (Serial.available() > 0) {
     char receivedCharacter = Serial.read();
     if (receivedCharacter == '\n') {
@@ -84,7 +86,7 @@ String receiveData() {
   return String("-1");
 }
 
-String outputTemperatureText(String temperatures){
+String outputTemperatureText(String temperatures) {
   String displayText = "CPU: " + temperatures.substring(0, 2) + "\nGPU: " + temperatures.substring(2);
 
   return displayText;
@@ -95,13 +97,22 @@ void loop() {
   // if there's any serial available, read it:
   String displayMessage = receiveData();
 
+  if (!connected) {
+    Serial.print("~");
+
+  }
+
   if (!String("-1").equalsIgnoreCase(displayMessage)) {
+    if (!connected) {
+      connected = true;
+    }
+
     Serial.println(displayMessage);
 
     drawText(outputTemperatureText(displayMessage));
 
     digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
-    delay(200);                       
+    delay(200);
   }
   digitalWrite(LED_BUILTIN, LOW);   // turn the LED off (LOW is the voltage level)
   delay(1);
